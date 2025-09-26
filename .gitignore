@@ -26,3 +26,6 @@ dist/
 .cache/
 .next/
 out/
+
+# Exclude mmba-ai-programmers folder
+mmba-ai-programmers/

@@ -1,0 +1,74 @@
+Project Title: Hummingbird Monitoring and Alert System
+
+Overview:
+This app monitors hummingbird activity using motion-triggered video feeds from Blue Iris, identifies individual birds using AI, counts visits, and generates daily summaries. It also alerts the user when feeders likely need refilling based on visit frequency or nectar depletion. The app will be built in Python with a React-based frontend, using LangChain and Cursor for development and testing.
+
+Goals:
+- Track hummingbird visits using motion capture
+- Identify individual birds using AI (e.g., CodeProject.AI + embeddings)
+- Count visits per bird and per feeder
+- Generate daily summaries of activity
+- Alert when feeder needs refilling
+- Provide a clean, modular dashboard for observability
+
+Tech Stack:
+- **Backend**: Python (FastAPI or Flask), LangChain, OpenAI or local LLM
+- **Frontend**: React (via Node.js and npm)
+- **AI Features**:
+  - Object detection via CodeProject.AI
+  - Embedding-based bird ID (e.g., Pinecone or FAISS)
+  - Prompting for summary generation
+  - RAG evaluation for alert logic
+- **Observability**: Logging, metrics, and daily summaries
+- **Dev Tools**: Cursor IDE, LangChain, GitHub
+
+Requirements:
+- Code must be clean, commented, and runnable
+- All code in a new GitHub repo
+- Incorporate ideas from previous course homework repo
+- Include clear documentation (README, architecture, setup)
+- Use LangChain for chaining prompts and RAG logic
+- Use Cursor for building and testing
+- Frontend must be React-based and communicate with backend via API
+- The folder \mmba-ai-programmers contains completed course homework. It is not part of this project but should be used only for inspiration. Our Hummingbird Monitoring and Alert System project should integrate code similar to code in the \mmba-ai-programmers where it would be useful so that we can show that we learned from and are applying knowledge from the course homework
+
+Modules:
+1. **Capture Ingestion**
+   - Receive motion-triggered frames from Blue Iris
+   - Store metadata (timestamp, feeder ID, camera ID)
+
+2. **Bird Identification**
+   - Run object detection via CodeProject.AI
+   - Generate embeddings for biometric ID
+   - Match against known birds (Pinecone or FAISS)
+
+3. **Visit Counter**
+   - Track visits per bird, per feeder, per day
+   - Store in local DB (SQLite or Postgres)
+
+4. **Summary Generator**
+   - Use LangChain to prompt daily summaries
+   - Include visit counts, peak hours, new birds
+
+5. **Feeder Alert Logic**
+   - Estimate nectar depletion based on visit frequency
+   - Trigger alert if refill threshold is crossed
+   - Optional: integrate with weight sensor or manual refill log
+
+6. **Frontend Dashboard**
+   - React UI for viewing summaries, bird profiles, and alerts
+   - API calls to backend for data and updates
+
+7. **Observability**
+   - Logging of detection events
+   - Metrics for feeder usage, bird activity
+   - Optional: Grafana or lightweight charting
+
+Next Steps:
+- Scaffold backend with FastAPI and LangChain
+- Set up frontend with React and basic dashboard
+- Integrate CodeProject.AI for detection
+- Build embedding pipeline for bird ID
+- Implement visit tracking and alert logic
+- Generate daily summaries via prompt chaining
+- Document everything clearly
