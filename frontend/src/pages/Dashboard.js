@@ -13,25 +13,92 @@ import { format, subDays } from 'date-fns';
 import { api } from '../services/api';
 
 const Dashboard = () => {
-  // Fetch dashboard data
-  const { data: stats, isLoading: statsLoading } = useQuery(
+  // Fetch dashboard data with error handling
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery(
     'dashboard-stats',
     () => api.get('/api/visits/stats/daily').then(res => res.data),
-    { refetchInterval: 30000 } // Refresh every 30 seconds
+    { 
+      refetchInterval: 30000, // Refresh every 30 seconds
+      retry: 1, // Only retry once
+      retryDelay: 1000
+    }
   );
 
-  const { data: alerts, isLoading: alertsLoading } = useQuery(
+  const { data: alerts, isLoading: alertsLoading, error: alertsError } = useQuery(
     'active-alerts',
-    () => api.get('/api/alerts/?is_active=true&limit=5').then(res => res.data)
+    () => api.get('/api/alerts/?is_active=true&limit=5').then(res => res.data),
+    { retry: 1, retryDelay: 1000 }
   );
 
-  const { data: recentVisits, isLoading: visitsLoading } = useQuery(
+  const { data: recentVisits, isLoading: visitsLoading, error: visitsError } = useQuery(
     'recent-visits',
-    () => api.get('/api/visits/?limit=10').then(res => res.data)
+    () => api.get('/api/visits/?limit=10').then(res => res.data),
+    { retry: 1, retryDelay: 1000 }
   );
 
-  // Mock data for charts (in production, this would come from the API)
-  const visitTrendData = [
+  // Generate recent mock data (last 7 days)
+  const generateRecentMockData = () => {
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = subDays(new Date(), i);
+      data.push({
+        date: format(date, 'yyyy-MM-dd'),
+        visits: Math.floor(Math.random() * 20) + 5,
+        birds: Math.floor(Math.random() * 8) + 2
+      });
+    }
+    return data;
+  };
+
+  // Generate mock stats for when API is unavailable
+  const generateMockStats = () => ({
+    total_visits: Math.floor(Math.random() * 50) + 10,
+    unique_birds: Math.floor(Math.random() * 8) + 2,
+    peak_hour: `${Math.floor(Math.random() * 12) + 6}:00`,
+    average_duration: Math.floor(Math.random() * 30) + 10
+  });
+
+  // Generate mock alerts for when API is unavailable
+  const generateMockAlerts = () => [
+    {
+      id: 1,
+      title: "Feeder Low on Nectar",
+      message: "Feeder 1 nectar level is below 20%",
+      severity: "medium",
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 2,
+      title: "Unusual Activity Detected",
+      message: "Multiple birds detected at feeder 2",
+      severity: "low",
+      created_at: new Date().toISOString()
+    }
+  ];
+
+  // Generate mock recent visits for when API is unavailable
+  const generateMockVisits = () => {
+    const birdNames = ["Ruby-throated Hummingbird", "Anna's Hummingbird", "Rufous Hummingbird", "Black-chinned Hummingbird"];
+    const visits = [];
+    for (let i = 0; i < 5; i++) {
+      const visitTime = new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000);
+      visits.push({
+        id: i + 1,
+        bird_name: birdNames[Math.floor(Math.random() * birdNames.length)],
+        feeder_id: `feeder-${Math.floor(Math.random() * 3) + 1}`,
+        visit_time: visitTime.toISOString(),
+        duration_seconds: Math.floor(Math.random() * 60) + 10,
+        confidence_score: Math.random() * 0.4 + 0.6
+      });
+    }
+    return visits;
+  };
+
+  // Use real data if available, otherwise use mock data
+  const displayStats = statsError ? generateMockStats() : stats;
+  const displayAlerts = alertsError ? generateMockAlerts() : alerts;
+  const displayVisits = visitsError ? generateMockVisits() : recentVisits;
+  const visitTrendData = statsError ? generateRecentMockData() : [
     { date: '2024-01-01', visits: 12, birds: 3 },
     { date: '2024-01-02', visits: 18, birds: 4 },
     { date: '2024-01-03', visits: 15, birds: 3 },
@@ -41,7 +108,16 @@ const Dashboard = () => {
     { date: '2024-01-07', visits: 31, birds: 7 },
   ];
 
-  const hourlyData = [
+  // Generate mock hourly data when API is unavailable
+  const generateMockHourlyData = () => {
+    const hours = ['6:00', '7:00', '8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+    return hours.map(hour => ({
+      hour,
+      visits: Math.floor(Math.random() * 20) + 2
+    }));
+  };
+
+  const hourlyData = statsError ? generateMockHourlyData() : [
     { hour: '6:00', visits: 2 },
     { hour: '7:00', visits: 8 },
     { hour: '8:00', visits: 15 },
@@ -66,8 +142,28 @@ const Dashboard = () => {
     );
   }
 
+  // Check if any API calls failed (using mock data)
+  const isUsingMockData = statsError || alertsError || visitsError;
+
   return (
     <div className="space-y-6">
+      {/* Mock Data Banner */}
+      {isUsingMockData && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3" />
+            <div>
+              <p className="text-sm font-medium text-yellow-800">
+                Demo Mode - BlueIris NVR Unavailable
+              </p>
+              <p className="text-xs text-yellow-700 mt-1">
+                Using sample motion events.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -86,7 +182,7 @@ const Dashboard = () => {
             <div className="ml-5 w-0 flex-1">
               <dl>
                 <dt className="text-sm font-medium text-gray-500 truncate">Total Visits Today</dt>
-                <dd className="text-lg font-medium text-gray-900">{stats?.total_visits || 0}</dd>
+                <dd className="text-lg font-medium text-gray-900">{displayStats?.total_visits || 0}</dd>
               </dl>
             </div>
           </div>
@@ -100,7 +196,7 @@ const Dashboard = () => {
             <div className="ml-5 w-0 flex-1">
               <dl>
                 <dt className="text-sm font-medium text-gray-500 truncate">Unique Birds</dt>
-                <dd className="text-lg font-medium text-gray-900">{stats?.unique_birds || 0}</dd>
+                <dd className="text-lg font-medium text-gray-900">{displayStats?.unique_birds || 0}</dd>
               </dl>
             </div>
           </div>
@@ -114,7 +210,7 @@ const Dashboard = () => {
             <div className="ml-5 w-0 flex-1">
               <dl>
                 <dt className="text-sm font-medium text-gray-500 truncate">Peak Hour</dt>
-                <dd className="text-lg font-medium text-gray-900">{stats?.peak_hour || 'N/A'}</dd>
+                <dd className="text-lg font-medium text-gray-900">{displayStats?.peak_hour || 'N/A'}</dd>
               </dl>
             </div>
           </div>
@@ -128,7 +224,7 @@ const Dashboard = () => {
             <div className="ml-5 w-0 flex-1">
               <dl>
                 <dt className="text-sm font-medium text-gray-500 truncate">Active Alerts</dt>
-                <dd className="text-lg font-medium text-gray-900">{alerts?.length || 0}</dd>
+                <dd className="text-lg font-medium text-gray-900">{displayAlerts?.length || 0}</dd>
               </dl>
             </div>
           </div>
@@ -173,7 +269,7 @@ const Dashboard = () => {
         <div className="card">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Visits</h3>
           <div className="space-y-3">
-            {recentVisits?.slice(0, 5).map((visit) => (
+            {displayVisits?.slice(0, 5).map((visit) => (
               <div key={visit.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
                 <div className="flex items-center">
                   <Bird className="h-5 w-5 text-hummingbird-600 mr-3" />
@@ -203,8 +299,8 @@ const Dashboard = () => {
         <div className="card">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Active Alerts</h3>
           <div className="space-y-3">
-            {alerts?.length > 0 ? (
-              alerts.map((alert) => (
+            {displayAlerts?.length > 0 ? (
+              displayAlerts.map((alert) => (
                 <div key={alert.id} className={`p-3 rounded-lg border-l-4 ${
                   alert.severity === 'high' ? 'border-red-500 bg-red-50' :
                   alert.severity === 'medium' ? 'border-yellow-500 bg-yellow-50' :
