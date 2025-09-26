@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv
 
 from app.core.config import settings
-from app.api.routes import birds, visits, alerts, summaries, captures, identification, visit_tracking, summary_generation, feeder_alerts
+from app.api.routes import birds, visits, alerts, summaries, captures, identification, visit_tracking, summary_generation, feeder_alerts, observability
 from app.core.database import init_db
 
 # Load environment variables
@@ -52,6 +52,7 @@ app.include_router(identification.router, prefix="/api/identification", tags=["i
 app.include_router(visit_tracking.router, prefix="/api/visit-tracking", tags=["visit-tracking"])
 app.include_router(summary_generation.router, prefix="/api/summary-generation", tags=["summary-generation"])
 app.include_router(feeder_alerts.router, prefix="/api/feeder-alerts", tags=["feeder-alerts"])
+app.include_router(observability.router, prefix="/api/observability", tags=["observability"])
 
 # Serve static files (for React build)
 if os.path.exists("frontend/build"):
