@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import { 
   Activity, 
@@ -6,19 +6,23 @@ import {
   AlertTriangle, 
   TrendingUp,
   Clock,
-  Thermometer
+  Thermometer,
+  Pause,
+  Play
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { api } from '../services/api';
 
 const Dashboard = () => {
+  const [isPaused, setIsPaused] = useState(false);
+
   // Fetch dashboard data with error handling
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery(
     'dashboard-stats',
     () => api.get('/api/visits/stats/daily').then(res => res.data),
     { 
-      refetchInterval: 30000, // Refresh every 30 seconds
+      refetchInterval: isPaused ? false : 30000, // Refresh every 30 seconds when not paused
       retry: 1, // Only retry once
       retryDelay: 1000
     }
@@ -27,13 +31,21 @@ const Dashboard = () => {
   const { data: alerts, isLoading: alertsLoading, error: alertsError } = useQuery(
     'active-alerts',
     () => api.get('/api/alerts/?is_active=true&limit=5').then(res => res.data),
-    { retry: 1, retryDelay: 1000 }
+    { 
+      refetchInterval: isPaused ? false : 30000,
+      retry: 1, 
+      retryDelay: 1000 
+    }
   );
 
   const { data: recentVisits, isLoading: visitsLoading, error: visitsError } = useQuery(
     'recent-visits',
     () => api.get('/api/visits/?limit=10').then(res => res.data),
-    { retry: 1, retryDelay: 1000 }
+    { 
+      refetchInterval: isPaused ? false : 30000,
+      retry: 1, 
+      retryDelay: 1000 
+    }
   );
 
   // Generate recent mock data (last 7 days)
@@ -147,7 +159,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Mock Data Banner */}
+      {/* Status Banners */}
       {isUsingMockData && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-center">
@@ -164,12 +176,53 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* Paused Banner */}
+      {isPaused && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <Pause className="h-5 w-5 text-blue-600 mr-3" />
+            <div>
+              <p className="text-sm font-medium text-blue-800">
+                Dashboard Updates Paused
+              </p>
+              <p className="text-xs text-blue-700 mt-1">
+                Click "Resume Updates" to continue automatic data refresh.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Monitor your hummingbird activity and feeder status
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Monitor your hummingbird activity and feeder status
+          </p>
+        </div>
+        
+        {/* Pause/Run Button */}
+        <button
+          onClick={() => setIsPaused(!isPaused)}
+          className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            isPaused 
+              ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+          }`}
+        >
+          {isPaused ? (
+            <>
+              <Play className="h-4 w-4 mr-2" />
+              Resume Updates
+            </>
+          ) : (
+            <>
+              <Pause className="h-4 w-4 mr-2" />
+              Pause Updates
+            </>
+          )}
+        </button>
       </div>
 
       {/* Stats Cards */}
