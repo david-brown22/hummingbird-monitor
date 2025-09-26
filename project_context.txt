@@ -30,7 +30,6 @@ Requirements:
 - Use LangChain for chaining prompts and RAG logic
 - Use Cursor for building and testing
 - Frontend must be React-based and communicate with backend via API
-- The folder \mmba-ai-programmers contains completed course homework. It is not part of this project but should be used only for inspiration. Our Hummingbird Monitoring and Alert System project should integrate code similar to code in the \mmba-ai-programmers where it would be useful so that we can show that we learned from and are applying knowledge from the course homework
 
 Modules:
 1. **Capture Ingestion**
