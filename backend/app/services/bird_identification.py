@@ -7,7 +7,14 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple
 import json
 import requests
+import logging
+from datetime import datetime
+from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.models.bird import Bird
+from app.models.visit import Visit
+
+logger = logging.getLogger(__name__)
 
 class BirdIdentificationService:
     """Service for identifying hummingbirds using AI and embeddings"""
@@ -16,6 +23,10 @@ class BirdIdentificationService:
         self.codeproject_ai_url = settings.codeproject_ai_url
         self.pinecone_api_key = settings.pinecone_api_key
         self.pinecone_index_name = settings.pinecone_index_name
+        
+        # Initialize vector database
+        from app.services.vector_database import VectorDatabaseService
+        self.vector_db = VectorDatabaseService()
     
     async def identify_bird(self, image_path: str) -> Dict:
         """
@@ -194,22 +205,149 @@ class BirdIdentificationService:
         return lbp
     
     async def _match_bird_embedding(self, embedding: List[float]) -> Dict:
-        """Match bird embedding against known birds using Pinecone/FAISS"""
+        """Match bird embedding against known birds using vector database"""
         try:
             if not embedding:
                 return {"bird_id": None, "confidence": 0.0}
             
-            # For now, return a placeholder match
-            # In production, this would query Pinecone or FAISS
-            return {
-                "bird_id": None,  # Would be actual bird ID from vector DB
-                "confidence": 0.0,  # Would be similarity score
-                "match_type": "new_bird"  # Indicates this is a new bird
-            }
+            # Search for similar birds in vector database
+            similar_birds = await self.vector_db.search_similar_birds(
+                query_embedding=embedding,
+                k=5,
+                threshold=0.7  # 70% similarity threshold
+            )
+            
+            if similar_birds:
+                # Return the most similar bird
+                best_match = similar_birds[0]
+                return {
+                    "bird_id": best_match["bird_id"],
+                    "confidence": best_match["similarity"],
+                    "match_type": "existing_bird",
+                    "bird_name": best_match.get("bird_name"),
+                    "similarity_score": best_match["similarity"]
+                }
+            else:
+                # No similar birds found - this is a new bird
+                return {
+                    "bird_id": None,
+                    "confidence": 0.0,
+                    "match_type": "new_bird"
+                }
             
         except Exception as e:
+            logger.error(f"Error matching bird embedding: {e}")
             return {
                 "bird_id": None,
                 "confidence": 0.0,
                 "error": str(e)
             }
+    
+    async def add_bird_to_database(
+        self, 
+        embedding: List[float], 
+        bird_id: int, 
+        bird_name: str = None,
+        metadata: Dict = None,
+        db: Session = None
+    ) -> bool:
+        """
+        Add a new bird to the vector database
+        
+        Args:
+            embedding: Bird embedding vector
+            bird_id: Database ID of the bird
+            bird_name: Optional name for the bird
+            metadata: Additional metadata
+            db: Database session
+            
+        Returns:
+            bool: Success status
+        """
+        try:
+            # Add to vector database
+            success = await self.vector_db.add_bird_embedding(
+                embedding=embedding,
+                bird_id=bird_id,
+                bird_name=bird_name,
+                metadata=metadata
+            )
+            
+            if success and db:
+                # Update bird record in database
+                bird = db.query(Bird).filter(Bird.id == bird_id).first()
+                if bird:
+                    bird.embedding_id = f"vector_{bird_id}"
+                    db.commit()
+                    logger.info(f"Added bird {bird_id} to vector database")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Error adding bird to database: {e}")
+            return False
+    
+    async def update_bird_embedding(
+        self, 
+        bird_id: int, 
+        new_embedding: List[float],
+        metadata: Dict = None
+    ) -> bool:
+        """Update embedding for an existing bird"""
+        try:
+            success = await self.vector_db.update_bird_embedding(
+                bird_id=bird_id,
+                new_embedding=new_embedding,
+                metadata=metadata
+            )
+            
+            if success:
+                logger.info(f"Updated embedding for bird {bird_id}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Error updating bird embedding: {e}")
+            return False
+    
+    async def remove_bird_from_database(self, bird_id: int) -> bool:
+        """Remove a bird from the vector database"""
+        try:
+            success = await self.vector_db.remove_bird_embedding(bird_id)
+            
+            if success:
+                logger.info(f"Removed bird {bird_id} from vector database")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Error removing bird from database: {e}")
+            return False
+    
+    async def get_bird_embedding(self, bird_id: int) -> Optional[List[float]]:
+        """Get embedding for a specific bird"""
+        try:
+            return await self.vector_db.get_bird_embedding(bird_id)
+        except Exception as e:
+            logger.error(f"Error getting bird embedding: {e}")
+            return None
+    
+    async def get_database_statistics(self) -> Dict:
+        """Get statistics about the bird identification database"""
+        try:
+            stats = await self.vector_db.get_database_stats()
+            return stats
+        except Exception as e:
+            logger.error(f"Error getting database statistics: {e}")
+            return {"error": str(e)}
+    
+    async def rebuild_identification_database(self) -> bool:
+        """Rebuild the entire identification database"""
+        try:
+            success = await self.vector_db.rebuild_index()
+            if success:
+                logger.info("Successfully rebuilt identification database")
+            return success
+        except Exception as e:
+            logger.error(f"Error rebuilding database: {e}")
+            return False
