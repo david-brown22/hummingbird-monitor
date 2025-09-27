@@ -166,10 +166,10 @@ const Dashboard = () => {
             <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3" />
             <div>
               <p className="text-sm font-medium text-yellow-800">
-                Demo Mode - BlueIris NVR Unavailable
+                Demo Mode - The BlueIris NVR is unavailable.
               </p>
               <p className="text-xs text-yellow-700 mt-1">
-                Using sample motion events.
+                Using sample motion triggered images.
               </p>
             </div>
           </div>

@@ -66,7 +66,7 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy"}
+    return {"status": "healthy", "detail": "Using sample motion triggered images."}
 
 if __name__ == "__main__":
     import uvicorn
